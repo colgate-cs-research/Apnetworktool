@@ -52,6 +52,16 @@ def capture_heatmap(driver, site_id, building_name, floor_num):
     # Save heatmap
     driver.save_screenshot('%s_f%d_5GHz.png' % (building_name, floor_num))
 
+    # Only show 2.4GHz coverage
+    driver.find_elements_by_css_selector(
+            '.goog-checkbox')[1].click()
+    driver.find_elements_by_css_selector(
+            '.goog-checkbox')[0].click()
+    time.sleep(8)
+
+    # Save heatmap
+    driver.save_screenshot('%s_f%d_2GHz.png' % (building_name, floor_num))
+
 def main():
     # Parse arguments
     arg_parser = ArgumentParser(description='Scrape heatmaps from Airwave')
