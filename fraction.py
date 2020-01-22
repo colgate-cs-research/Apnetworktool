@@ -4,6 +4,8 @@ import csv
 import argparse
 import operator
 import rrdtool
+import pygraphviz
+import networkx as nx
 
 def main():
     parser = argparse.ArgumentParser(description='Aggregate experiment output')
@@ -33,8 +35,18 @@ def main():
                 else:
                     nodes[row[0]].add_remote(remotenode(row[i], row[i+1], row[i+2]))
                     i = i + 3
+    # ## TODO: Using NetworkX to build this graaph
+    # G = nx.DiGraph()
+    # for node in nodes:
+    #     for rnode in nodes[node].remote:
+    #         if (G.has_edge(nodes[node].hostname,rnode.hostname)):
+    #             G.add_edge(rnode.hostname, nodes[node].hostname)
+    #
+    #         else:
+    #             label = '%s:%s' % (rnode.localinterface,rnode.remoteinterface)
+    #             G.add_edge(nodes[node].hostname,rnode.hostname, label = label)
 
-    target_hosts = ["casecloset-4507", "ho-4507", "pinchin-0"]
+    target_hosts = ["casecloset-4507", "ho-4507", "colgate6807-vss"]
     results_id = []
     for local_node in nodes:
         for remote_node in nodes[local_node].remote:
@@ -51,29 +63,7 @@ def main():
     wirelessout = getwireless(apports, args.path, "out")
     uplinkin = getwireless(uplink, args.path, "in")
     uplinkout = getwireless(uplink, args.path, "out")
-    wirelessintotal = 0
-    wirelessouttotal = 0
-    uplinkintotal = 0
-    uplinkouttotal = 0
-    for data in wirelessin:
-        wirelessintotal = wirelessintotal + data
-    for data in wirelessout:
-        wirelessouttotal = wirelessouttotal + data
-    for data in uplinkin:
-        uplinkintotal = uplinkintotal + data
-    for data in uplinkout:
-        uplinkouttotal = uplinkouttotal + data
-    infraction = []
-    outfraction = []
-    for i in range (len(wirelessin)):
-        if uplinkin[i] == 0:
-            infraction.append("None")
-        else:
-            infraction.append(wirelessin[i]/uplinkin[i])
-        if uplinkout[i] == 0:
-            outfraction.append("None")
-        else:
-            outfraction.append(wirelessout[i]/uplinkout[i])
+    wirelessintotal, wirelessouttotal, uplinkintotal, uplinkouttotal, infraction, outfraction = calculate(wirelessin, wirelessout, uplinkin, uplinkout)
     datainfile = open(datainfilepath, 'w')
     writer = csv.writer(datainfile)
     writer.writerow(wirelessin)
@@ -88,7 +78,19 @@ def main():
     writer.writerow(outfraction)
     writer.writerow([wirelessouttotal/uplinkouttotal])
     dataoutfile.close()
-    print(infraction, outfraction)
+    deviceup = {'caseeast1-0':'casecloset-4507', 'caseeast2-0':'casecloset-4507',
+                'caseeast3-0':'colgate6807-vss', 'casewest1-0':'casecloset-4507',
+                'casewest2-0':'casecloset-4507', 'casewest3-0':'casecloset-4507',
+                'casewest4-0':'casecloset-4507', 'casewest5-0':'casecloset-4507',
+                'ho-f0-0':'ho-4507', 'ho-f1-6':'ho-f1-5',
+                'ho-f2-7':'ho-f2-6', 'ho-f2-8':'ho-f2-7',
+                'ho-f3-2':'ho-f3-1', 'ho-f3-4':'ho-4507',
+                'ho-f3-8':'ho-f3-5', 'ho-f4-0':'ho-4507',
+                'ho-f4-2':'ho-f4-1', 'ho-f4-3':'ho-4507',
+                'ho-f4-4':'ho-f4-3', 'ho-f4-5':'colgate6807-vss',
+                'pinchin-0':'colgate6807-vss',
+                'caseeast5-0a':'casecloset-4507'}
+    perdevicebase(switches, deviceup, nodes, args.path)
 
 
 
@@ -118,12 +120,24 @@ class switch(object):
         self.name = name
         self.ports = []
         self.apportsinterface = []
+        self.apports = []
+        self.upportid = []
+        self.upport=[]
 
     def add(self,port):
         self.ports.append(port)
 
     def addap(self,interface):
         self.apportsinterface.append(interface)
+
+    def addupid(self,upport):
+        self.upportid.append(upport)
+
+    def addup(self, upport):
+        self.upport.append(upport)
+
+    def addaport(self, apport):
+        self.apports.append(apport)
 
     def checkid (self, id):
     #check if the given ID coreponding port is in this switch
@@ -190,6 +204,32 @@ class remotenode(object):
         self.hostname = hostname
         self.localinterface = localinterface
         self.remoteinterface = remoteinterface
+
+def calculate(wirelessin, wirelessout, uplinkin, uplinkout):
+    wirelessintotal = 0
+    wirelessouttotal = 0
+    uplinkintotal = 0
+    uplinkouttotal = 0
+    for data in wirelessin:
+        wirelessintotal = wirelessintotal + data
+    for data in wirelessout:
+        wirelessouttotal = wirelessouttotal + data
+    for data in uplinkin:
+        uplinkintotal = uplinkintotal + data
+    for data in uplinkout:
+        uplinkouttotal = uplinkouttotal + data
+    infraction = []
+    outfraction = []
+    for i in range (len(wirelessin)):
+        if uplinkin[i] == 0:
+            infraction.append("None")
+        else:
+            infraction.append(wirelessin[i]/uplinkin[i])
+        if uplinkout[i] == 0:
+            outfraction.append("None")
+        else:
+            outfraction.append(wirelessout[i]/uplinkout[i])
+    return wirelessintotal, wirelessouttotal, uplinkintotal, uplinkouttotal, infraction, outfraction
 
 def getwireless(apports, path, check):
     if check == "in":
@@ -264,6 +304,7 @@ def processrrd(base_dir, allports):
                     if name_list[0] in allports:
                         if allports[name_list[0]].checkid(name_list[-1][:-4]):
                             if allports[name_list[0]].getinterface(name_list[-1][:-4]) in allports[name_list[0]].apportsinterface:
+                                allports[name_list[0]].addaport(name)
                                 apports.append(name)
     else:
         print("please enter valid rrd directory")
@@ -278,6 +319,36 @@ def processuplink(base_dir, idlist):
                 if name_list[-1][:-4] in idlist:
                     results.append(name)
     return results
+
+def processdeviceup(base_dir, switches):
+    if os.path.isdir(base_dir):
+        for root,dirs,files in os.walk(base_dir):
+            for name in files:
+                name_list = name.split('_')
+                for device in switches:
+                    if name_list[-1][:-4] in switches[device].upportid:
+                        switches[device].addup(name)
+# TODO: Complete perdevicebase function that return every apports of a device
+def perdevicebase(switches, updevice, nodes, path):
+    for device in switches:
+        if not len(switches[device].apportsinterface) == 0:
+            for rnode in nodes[device].remote:
+                if rnode.hostname == updevice[device]:
+                    switches[device].addupid(switches[device].getid(rnode.localinterface))
+
+    processdeviceup(path, switches)
+
+    for device in switches:
+        if not len(switches[device].apportsinterface) == 0:
+            wirelessin = getwireless(switches[device].apports, path, 'in')
+            uplinkin = getwireless(switches[device].upport, path, 'in')
+            wirelessout = getwireless(switches[device].apports, path, 'out')
+            uplinkout = getwireless(switches[device].upport, path, 'out')
+            print(device)
+            wirelessintotal, wirelessouttotal, uplinkintotal, uplinkouttotal, infraction, outfraction = calculate(wirelessin, wirelessout, uplinkin, uplinkout)
+            print('total in fraction : %f' %(wirelessintotal/uplinkintotal))
+            print('total out fraction :%f' %(wirelessouttotal/uplinkouttotal))
+
 
 
 
