@@ -15,6 +15,8 @@ def main():
             required=True, help='Path to mapping file')
     parser.add_argument('-i', '--idpath', dest='idfile_path', action='store',
             required=True, help='Path to id file')
+    parser.add_argument('-g','--graphpath', dest='graphfile_path', action='store',
+            required=True, help='Path to graph file')
     parser.add_argument('-s', '--start', dest='start', action='store')
     parser.add_argument('-t', '--type', dest='type', action='store')
     args = parser.parse_args()
@@ -23,7 +25,8 @@ def main():
     apports = processrrd(args.path, switches)
 
     nodes = {}
-    graphfile = open("graph.csv", "r")
+    graph_path = os.path.join(args.graphfile_path, "graph.csv")
+    graphfile = open(graph_path, "r")
     graph_csv = csv.reader(graphfile)
     for row in graph_csv:
         if ("Node" not in row[0]):
