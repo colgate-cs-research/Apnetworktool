@@ -17,7 +17,7 @@ cd $OUTDIR
 
 PASSWORD=`cat $HOME/.airwave-credentials`
 
-ping -c 5 airwave.colgate.edu > capture.log
+ping -c 5 airwave.colgate.edu > ping.log
 
 $BASEDIR/airwave_heatmaps.py -u research -p $PASSWORD -s $BASEDIR/$SITESET.csv \
-    >> capture.log 2>>&1
+    > capture.log 2>&1
