@@ -20,8 +20,8 @@ def main():
     G=pygraphviz.AGraph(strict=False,directed=True)
     for node in nodes:
         for rnode in nodes[node].remote:
-            if (G.has_edge(nodes[node].hostname,rnode.hostname)):
-                G.get_edge(nodes[node].hostname,rnode.hostname).attr['dir']="both"
+            if (G.has_edge(rnode.hostname,nodes[node].hostname)):
+                G.get_edge(rnode.hostname,nodes[node].hostname).attr['dir']="both"
 
             else:
                 label = '%s:%s' % (rnode.localinterface,rnode.remoteinterface)
