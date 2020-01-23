@@ -70,16 +70,16 @@ def main():
     datainfile = open(datainfilepath, 'w')
     writer = csv.writer(datainfile)
     writer.writerow(wirelessin)
-    writer.writerow(uplinkin)
+    writer.writerow(uplinkout)
     writer.writerow(infraction)
-    writer.writerow([wirelessintotal/uplinkintotal])
+    writer.writerow([wirelessintotal/uplinkouttotal])
     datainfile.close()
     dataoutfile = open (dataoutfilepath, 'w')
     writer = csv.writer(dataoutfile)
     writer.writerow(wirelessout)
-    writer.writerow(uplinkout)
+    writer.writerow(uplinkin)
     writer.writerow(outfraction)
-    writer.writerow([wirelessouttotal/uplinkouttotal])
+    writer.writerow([wirelessouttotal/uplinkintotal])
     dataoutfile.close()
     deviceup = {'caseeast1-0':'casecloset-4507', 'caseeast2-0':'casecloset-4507',
                 'caseeast3-0':'colgate6807-vss', 'casewest1-0':'casecloset-4507',
@@ -227,11 +227,11 @@ def calculate(wirelessin, wirelessout, uplinkin, uplinkout):
         if uplinkin[i] == 0:
             infraction.append("None")
         else:
-            infraction.append(wirelessin[i]/uplinkin[i])
+            infraction.append(wirelessin[i]/uplinkout[i])
         if uplinkout[i] == 0:
             outfraction.append("None")
         else:
-            outfraction.append(wirelessout[i]/uplinkout[i])
+            outfraction.append(wirelessout[i]/uplinkin[i])
     return wirelessintotal, wirelessouttotal, uplinkintotal, uplinkouttotal, infraction, outfraction
 
 def getwireless(apports, path, check):
@@ -349,8 +349,8 @@ def perdevicebase(switches, updevice, nodes, path):
             uplinkout = getwireless(switches[device].upport, path, 'out')
             print(device)
             wirelessintotal, wirelessouttotal, uplinkintotal, uplinkouttotal, infraction, outfraction = calculate(wirelessin, wirelessout, uplinkin, uplinkout)
-            print('total in fraction : %f' %(wirelessintotal/uplinkintotal))
-            print('total out fraction :%f' %(wirelessouttotal/uplinkouttotal))
+            print('total in fraction : %f' %(wirelessintotal/uplinkouttotal))
+            print('total out fraction :%f' %(wirelessouttotal/uplinkintotal))
 
 
 
